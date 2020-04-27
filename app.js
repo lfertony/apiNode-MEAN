@@ -9,7 +9,7 @@ const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 
 //SER AN URL TO DB CONNECTION WITH MONGODB
-const url = 'mongodb+srv://user_admin:6ZWL6sqx6988iHF@cluster0-qqt96.mongodb.net/test?retryWrites=true&w=majority';
+const url = '';
 
 //SET CONNECTIONS OPTIONS
 const options = {
