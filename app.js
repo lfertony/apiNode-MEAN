@@ -8,8 +8,11 @@ const app = express();
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 
+//IMPORT CONFIG FILE
+const config = require('./config/config');
+
 //SER AN URL TO DB CONNECTION WITH MONGODB
-const url = '';
+const url = config.bd_string;
 
 //SET CONNECTIONS OPTIONS
 const options = {

@@ -2,49 +2,62 @@ const express = require('express');
 const router = express.Router();
 const Users = require('../models/user');
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const config = require('../config/config');
 
-router.get('/', (req, res) =>{
-    Users.find({}, (err, data) =>{
-        if(err) return res.send({error: 'Error on Users Get Query'});
-        return res.send(data);
-        })
+const createUsertoken = (userId)=>{
+    return jwt.sign({id: userId}, config.auth_pwd, {expiresIn: config.token_exp});
+}
+router.get('/', async (req, res) =>{
+    try {
+        const users = await Users.find({});
+        return res.send(users);
+    }
+    catch(err){
+        return res.status(404).send({error: 'User can not be found'});
+    }
 });
 
 //Crisando rota de criacao de user
-router.post('/create', (req, res) => {
+router.post('/create', async (req, res) => {
     const { email, password } = req.body;
 
     if(!email || !password){
-        res.send({error: 'E-mail or Password cant be found'});
+        res.status(400).send({error: 'E-mail or Password cant be found'});
     }
 
-    Users.findOne({email}, (err, data) =>{
-        if(err) return res.send({error: 'something wrong about this user'});
-        if(data) return res.send({error: 'this user already exists'});
+    try{
+        if(await Users.findOne({email})) return res.status(400).send({error: 'this user already exists'});
 
-        Users.create(req.body, (err, data) =>{
-            if(err) return res.send({error: 'user can not be created'});
-            data.password = undefined;
-            return res.send(data);
-        })
-    })
+        const user = await Users.create(req.body);
+        user.password = undefined;
+        return res.status(201).send({user, token: createUsertoken(user.id)});
+
+    }catch(err){
+        return res.status(500).send({error: 'something wrong about this user'});
+    }
+
 });
 
-router.post('/auth', (req, res) =>{
+router.post('/auth', async (req, res) =>{
     const { email, password } = req.body;
 
-    if(!email || !password) return res.send({error: 'E-mail or Password cant be found'});
+    if(!email || !password) return res.status(400).send({error: 'E-mail or Password cant be found'});
+    try{
+        const user = await Users.findOne({email}).select('+password');
+        if(!user) return res.status(404).send({error: 'user dont exists'});
 
-    Users.findOne({email}, (err, data) => {
-        if(err) return res.send({error: 'something wrong about this user'});
-        if(!data) return res.send({error: 'user dont exists'});
+        const pass_ok = await bcrypt.compare(password, user.password);
+        if(!pass_ok) return res.status(403).send({error: 'User can not be checked'});
 
-        bcrypt.compare(password, data.password, (err, same) =>{
-            if(!same) return res.send({error: 'User can not be checked'});
-            data.password = undefined;
-            return res.send(data);
-        })
-    }).select('+password');
+        user.password = undefined;
+        return res.send({user, token: createUsertoken(user.id)});
+
+    }catch(err){
+        return res.status(500).send({error: 'something wrong about this user'});
+    }      
 })
+   
+
 
 module.exports = router;
